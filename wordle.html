@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Wordle</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #game-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #word-display {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #guess-input {
+            width: 100px;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        #guess-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #guess-button:hover {
+            background-color: #45a049;
+        }
+        #guess-results {
+            margin-top: 20px;
+        }
+        #used-letters {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        #debug-mode {
+            margin-top: 10px;
+        }
+        #debug-mode label {
+            font-size: 14px;
+            cursor: pointer;
+        }
+        footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+        @media screen and (max-width: 700px) {
+            #game-container {
+                width: 90%;
+            }
+        }
+    </style>
+  </head>
+  <body>
+    <h1>Wordle</h1>
+    <div id="game-container">
+    <div id="word-display"></div>
+    <input type="text" id="guess-input" placeholder="Enter your guess...">
+    <button id="guess-button">Guess</button>
+    <div id="guess-results"></div>
+    <div id="used-letters"></div>
+    <div id="debug-mode">
+        <input type="checkbox" id="debug-mode-switch">
+        <label for="debug-mode-switch">Debug Mode</label>
+    </div>
+    <button id="new-game-button">New Game</button>
+    </div>
+    <footer>DGMD E-28 Wordle Assignment Harvard Extension School</footer>
+    <script>
+        const DATAMUSE_API_URL = 'https://api.datamuse.com/words';
+        let usedLetters = [];
+        let guessesLeft = 6;
+        let answer = '';
+        let debugMode = false;
+
+        async function validateWord(word) {
+            try {
+            const response = await fetch(`${DATAMUSE_API_URL}&sp=${word}&max=1`);
+            const data = await response.json();
+            return data.length > 0;
+        } catch (error) {
+            console.error('Error validating word:', error);
+            return false;
+        }
+        }
+
+        document.getElementById('guess-button').addEventListener('click', async () => {
+            const guessInput = document.getElementById('guess-input');
+            const guess = guessInput.value.toUpperCase();
+            if (guess.length !== 5 || !/^[A-Z]+$/.test(guess)) {
+                alert('Please enter a valid 5-letter word.');
+                return;
+        }
+        if (usedLetters.includes(guess)) {
+            alert('You have already guessed this word.');
+            return;
+        }
+        const isValidWord = await validateWord(guess);
+        if (!isValidWord) {
+            alert('Please enter a valid English word.');
+            return;
+        }
+
+        guessesLeft--;
+
+        let guessResults = '';
+        for (let i = 0; i < guess.length; i++) {
+            if (answer.includes(guess[i])) {
+                if (answer[i] === guess[i]) {
+                    guessResults += 'Correct position\n';
+                } else {
+                    guessResults += 'Correct letter, wrong position\n';
+                }
+            } else {
+                    guessResults += 'Incorrect letter\n';
+                }
+            }
+
+        usedLetters.push(guess);
+        document.getElementById('used-letters').textContent = `Used letters: ${usedLetters.join(', ')}`;
+        document.getElementById('guess-results').textContent = guessResults;
+
+        if (guess === answer) {
+            alert('Congratulations! You won!');
+            newGame();
+        } else if (guessesLeft === 0) {
+            alert(`Sorry, you lost. The correct word was ${answer}.`);
+            newGame();
+        }
+
+        guessInput.value = '';
+        });
+
+        function newGame() {
+            usedLetters = [];
+            guessesLeft = 6;
+            document.getElementById('used-letters').textContent = '';
+            document.getElementById('guess-results').textContent = '';
+            generateAnswer();
+            if (debugMode) {
+                alert(`Debug mode: The answer is ${answer}.`);
+            }
+        }
+
+        document.getElementById('new-game-button').addEventListener('click', newGame);
+
+        document.getElementById('debug-mode-switch').addEventListener('change', function() {
+            debugMode = this.checked;
+        });
+
+        newGame();
+    </script>
+  </body>
+</html>

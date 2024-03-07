@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Wordle</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            text-align: center;
+            color: #333;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        #word-input {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #guess {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 20px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            outline: none;
+        }
+        #submit-button {
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #submit-button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #used-letters {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        #stats {
+            font-size: 20px;
+        }
+        footer {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #666;
+        }
+        @media screen and (max-width: 700px) {
+            #word-input, #submit-button, #result, #used-letters, #stats {
+                font-size: 1em;
+            }
+        }
+        @media screen and (max-width: 600px) {
+            #word-input, #submit-button, #result, #used-letters, #stats {
+                font-size: 0.8em;
+            }
+        }
+        @keyframes winAnimation {
+            0% { background-color: inherit; }
+            50% { background-color: #66ff66; }
+            100% { background-color: inherit; }
+        }
+        .win-animation {
+            animation: winAnimation 2s infinite;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+    <h1>Wordle Game</h1>
+    <div class="word-input">
+        <input type="text" id="guess" placeholder="Enter your guess" autocomplete="off">
+        <button id="submit-button">Submit</button>
+    </div>
+    <div>
+        <input type="checkbox" id="debug-checkbox">
+        <label for="debug-checkbox">Debug Mode</label>
+    </div>
+    <div id="result"></div>
+    <div id="used-letters"></div>
+    <div id="stats"></div>
+    </div>
+    <footer>DGMD E-28 Wordle Assignment Harvard Extension School</footer>
+
+    <script>
+        let answer = '';
+        let attempts = 6;
+        let usedLetters = new Set();
+        let wins = 0;
+        let losses = 0;
+        let totalGuesses = 0;
+        let debugMode = false;
+
+        startNewGame();
+
+        document.getElementById('submit-button').addEventListener('click', () => {
+            if (attempts === 0) {
+                displayResult(`Sorry, you've run out of attempts. The word was ${answer.toUpperCase()}.`);
+                losses++;
+                startNewGame();
+                return;
+            }
+            const guess = document.getElementById('guess').value.trim().toLowerCase();
+            if (guess.length !== 5 || !/^[a-zA-Z]+$/.test(guess)) {
+                displayResult('Please enter a 5-letter word with alphabets only.');
+                return;
+            }
+
+            if (!isValidWord(guess)) {
+                displayResult('Please enter a valid English word.');
+                return;
+            }
+
+            if (usedLetters.has(guess)) {
+                displayResult(`You've already guessed "${guess.toUpperCase()}". Try a different word.`);
+                return;
+            }
+
+            usedLetters.add(guess);
+            attempts--;
+            totalGuesses++;
+            const result = checkGuess(guess);
+            displayResult(`Result: ${result}. Attempts left: ${attempts}.`);
+            displayUsedLetters();
+
+            if (guess === answer) {
+                displayResult('Congratulations! You have guessed the word.');
+                const resultElement = document.getElementById('result');
+                 resultElement.classList.remove('win-animation');
+                resultElement.classList.add('win-animation');
+                startNewGame();
+                return;
+            }
+
+            if (attempts === 0) {
+                losses++;
+                displayResult(`Sorry, you've run out of attempts. The word was ${answer.toUpperCase()}.`);
+                startNewGame();
+            }
+        });
+
+        document.getElementById('debug-checkbox').addEventListener('change', (event) => {
+            debugMode = event.target.checked;
+            if (debugMode) {
+                displayResult(`Debug mode enabled. The answer is ${answer.toUpperCase()}.`);
+            } else {
+                displayResult('');
+            }
+        });
+
+        function startNewGame() {
+            getRandomWord()
+                .then(word =>{
+                answer = word.toLowerCase();
+                attempts = 6;
+                usedLetters.clear();
+                if (debugMode) {
+                    displayResult(`Debug mode enabled. The answer is ${answer.toUpperCase()}.`);
+                }
+                displayUsedLetters();
+                displayStats();
+            })
+            .catch(error => {
+                console.error('Error fetching random word:', error);
+            });
+        }
+
+        function displayResult(message) {
+            document.getElementById('result').textContent = message;
+        }
+
+        function displayUsedLetters() {
+            const usedLettersElement = document.getElementById('used-letters');
+            const usedLettersList = Array.from(usedLetters).map(letter => {
+                return `<span style="text-decoration: line-through;">${letter}</span>`;
+        });
+            usedLettersElement.innerHTML = `Used Letters: ${usedLettersList.join(', ').toUpperCase()}`;
+        }
+
+        function displayStats() {
+            document.getElementById('stats').textContent = `Wins: ${wins}, Losses: ${losses}, Average Guesses: ${(totalGuesses / (wins + losses)).toFixed(2)}`;
+        }
+
+        function isValidWord(word) {
+            const url = `https://api.datamuse.com/words?sp=${word}&max=1`;
+            return fetch(url)
+                .then(response => response.json())
+                .then(data => data.length > 0);
+        }
+
+        function checkGuess(guess) {
+            let result = '';
+            for (let i = 0; i < 5; i++) {
+                if (guess[i] === answer[i]) {
+                    result += guess[i].toUpperCase();
+                } else if (answer.includes(guess[i])) {
+                    result += guess[i];
+                } else {
+                    result += '-';
+                }
+            }
+            return result;
+        }
+
+        function getRandomWord() {
+            const url = 'https://random-word-api.herokuapp.com/word?number=10';
+            return fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const fiveLetterWords = data.filter(word => word.length === 5);
+                    if (fiveLetterWords.length === 0) {
+                        return getRandomWord();
+                    }
+                    return fiveLetterWords[Math.floor(Math.random() * fiveLetterWords.length)];
+                });
+        }
+    </script>
+  </body>
+</html>
