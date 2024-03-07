@@ -1,4 +1,4 @@
-wordle: 
+wordle: https://emmali6.github.io/dgmd-e28-wordle/wordlegame.html
 
 APIs used: https://api.datamuse.com/words?sp=${word}&max=1 and https://random-word-api.herokuapp.com/word?number=10
 Why: This was my first time using APIs so I was searching online for APIs to use. Random word helps to generate a random word for the game and Datamuse validates those words.
